@@ -78,6 +78,11 @@ def fetchPhoto(photouri):
     except urllib2.URLError, e:
         return False
 
+def shutdownGR():
+    req = urllib2.Request("http://192.168.0.1/v1/device/finish")
+    req.add_header('Content-Type', 'application/json')
+    response = urllib2.urlopen(req, "{}")
+
 def downloadPhotos(isAll):
     print "Fetching photo list from GR II ..."
     photoLists = getPhotoList()
@@ -102,6 +107,7 @@ def downloadPhotos(isAll):
     while True:
         if not photoLists:
             print "\nAll photos are downloaded."
+            shutdownGR()
             break
         else:
             photouri = photoLists.pop(0)
