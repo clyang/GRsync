@@ -3,6 +3,8 @@ GRsync is a handy Python script, which allows you to sync photos from Ricoh GR I
 
 It automatically checks if photos already exists in your local drive. Duplicated photos will be skipped and only sync needed photos for you.
 
+**NOTE: Ricoh GR II only supports 20MHz 802.11n. The max transfer speeed I can get is 65Mbps**
+
 ## Installaion
 1. Get the source from Github
  
