@@ -22,13 +22,14 @@ PHOTO_DEST_DIR = "/path/to/downloaded/photos/"
 ```
 
 ## Usage
-1. Simple usage - Download ALL photos from Ricoh GR II via Wifi
+1. Connect your desktop/laptop to Ricoh GR II's Wifi network. (SSID: RICOH_XXXXX)
+2. Simple usage - Download ALL photos from Ricoh GR II via Wifi
 
 ```bash
 ./GRsync -a
 ```
 
-2. Advanced usage - Download photos after specific directory and file
+3. Advanced usage - Download photos after specific directory and file
 
 ```bash
 ./GRsync -d 100RICOH -f R0000005.JPG
