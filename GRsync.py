@@ -144,9 +144,9 @@ Advanced usage - Download photos after specific directory and file:
     parser.add_argument("-d", "--dir", help="Assign directory (eg. -d 100RICOH). MUST use with -f")
     parser.add_argument("-f", "--file", help="Start to download photos from specific file \n(eg. -f R0000005.JPG). MUST use with -d")
     
-    #if getBatteryLevel() < 15:
-    #    print "Your battery level is less than 15%, please charge it before sync operation!"
-    #    sys.exit(1)
+    if getBatteryLevel() < 15:
+        print "Your battery level is less than 15%, please charge it before sync operation!"
+        sys.exit(1)
     
     if parser.parse_args().all == True and parser.parse_args().dir is None and parser.parse_args().file is None:
         downloadPhotos(isAll=True)
