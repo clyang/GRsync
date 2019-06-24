@@ -34,3 +34,6 @@ PHOTO_DEST_DIR = "/path/to/downloaded/photos/"
 ```bash
 ./GRsync -d 100RICOH -f R0000005.JPG
 ```
+
+## Contribution
+Special thanks to [@imkojima](https://github.com/imkojima) for fixing GR III compatibility issue.
