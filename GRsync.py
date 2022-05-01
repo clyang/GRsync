@@ -101,7 +101,7 @@ def fetchPhoto(photouri):
 def shutdownGR():
     req = urllib2.Request("http://192.168.0.1/v1/device/finish")
     req.add_header('Content-Type', 'application/json')
-    response = urllib2.urlopen(req, "{}")
+    response = urllib2.urlopen(req, b"{}")
 
 def downloadPhotos(isAll, jpeg_only=False, raw_only=False):
     print("Fetching photo list from %s ..." % DEVICE)
