@@ -1,3 +1,4 @@
+#!/usr/bin/python -u
 # -*- coding: utf-8 -*-
 
 import urllib.request as urllib2
@@ -11,7 +12,7 @@ import os
 
 # remember the ending "/"
 # eg: PHOTO_DEST_DIR = "/home/user/photos/"
-PHOTO_DEST_DIR = "/data/data/com.termux/files/home/storage/shared/Pictures/
+PHOTO_DEST_DIR = "/data/data/com.termux/files/home/storage/shared/Pictures/Sync"
 
 # GR_HOST is FIXED. DO NOT CHANGE!!
 GR_HOST = "http://192.168.0.1/"
@@ -102,7 +103,7 @@ def shutdownGR():
     req.add_header('Content-Type', 'application/json')
     response = urllib2.urlopen(req, "{}")
 
-def downloadPhotos(isAll):
+def downloadPhotos(isAll, jpeg_only=False, raw_only=False):
     print("Fetching photo list from %s ..." % DEVICE)
     photoLists = getPhotoList()
     localFiles = getLocalFiles()
@@ -134,6 +135,9 @@ def downloadPhotos(isAll):
             if photouri in localFiles:
                 print("(%d/%d) Skip %s, already have it on local drive!!" % (count, totalPhoto, photouri))
             else:
+                should_download = not(jpeg_only or raw_only) or (jpeg_only and photouri.upper().endswith(".JPG")) or (raw_only and photouri.upper().endswith(".DNG"))
+                if not should_download:
+                    continue
                 print("(%d/%d) Downloading %s now ... " % (count, totalPhoto, photouri),)
                 if fetchPhoto(photouri) == True:
                     print("done!!")
@@ -168,6 +172,8 @@ Advanced usage - Download photos after specific directory and file:
     parser.add_argument("-a", "--all", action="store_true", help="Download all photos")
     parser.add_argument("-d", "--dir", help="Assign directory (eg. -d 100RICOH). MUST use with -f")
     parser.add_argument("-f", "--file", help="Start to download photos from specific file \n(eg. -f R0000005.JPG). MUST use with -d")
+    parser.add_argument("-j", "--jpg", action="store_true", help="Download jpg files only")
+    parser.add_argument("-r", "--raw", action="store_true", help="Download raw files only")
 
     model = getDeviceModel()
     if model not in SUPPORT_DEVICE:
@@ -181,7 +187,12 @@ Advanced usage - Download photos after specific directory and file:
         sys.exit(1)
 
     if parser.parse_args().all == True and parser.parse_args().dir is None and parser.parse_args().file is None:
-        downloadPhotos(isAll=True)
+        if parser.parse_args().jpg == True:
+            downloadPhotos(isAll=True, jpeg_only=True)
+        elif parser.parse_args().raw == True:
+            downloadPhotos(isAll=True, raw_only=True)
+        else:
+            downloadPhotos(isAll=True)
     elif not (parser.parse_args().dir is None) and not (parser.parse_args().file is None) and parser.parse_args().all == False:
         match = re.match(r"^[1-9]\d\dRICOH$", parser.parse_args().dir)
         if match:
@@ -195,6 +206,11 @@ Advanced usage - Download photos after specific directory and file:
         else:
             print("Incorrect file name. It should be something like R0999999.JPG. (all in CAPITAL)")
             sys.exit(1)
-        downloadPhotos(isAll=False)
+        if parser.parse_args().jpg == True:
+            downloadPhotos(isAll=False, jpeg_only=True)
+        elif parser.parse_args().raw == True:
+            downloadPhotos(isAll=False, raw_only=True)
+        else:
+            downloadPhotos(isAll=False)
     else:
         parser.print_help()
