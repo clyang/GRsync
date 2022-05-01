@@ -12,7 +12,7 @@ import os
 
 # remember the ending "/"
 # eg: PHOTO_DEST_DIR = "/home/user/photos/"
-PHOTO_DEST_DIR = "/data/data/com.termux/files/home/storage/shared/Pictures/"
+PHOTO_DEST_DIR = ""
 
 # GR_HOST is FIXED. DO NOT CHANGE!!
 GR_HOST = "http://192.168.0.1/"
