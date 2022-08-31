@@ -103,12 +103,12 @@ def shutdownGR():
     req.add_header('Content-Type', 'application/json')
     response = urllib2.urlopen(req, b"{}")
 
-def downloadPhotos(isAll, jpeg_only=False, raw_only=False):
+def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None):
     print("Fetching photo list from %s ..." % DEVICE)
     photoLists = getPhotoList()
     localFiles = getLocalFiles()
     count = 0
-    if isAll == True:
+    if (isAll == True) or download_last_n_pictures or jpeg_only or raw_only:
         totalPhoto = len(photoLists)
     else:
         starturi = "%s/%s" % (STARTDIR, STARTFILE)
@@ -124,6 +124,15 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False):
                     break
                     
     print("Start to download photos ..."    )
+    if download_last_n_pictures:
+        if (jpeg_only and raw_only) or (isAll) or (not jpeg_only and not raw_only):
+                totalPhoto = download_last_n_pictures * 2
+        else:
+            totalPhoto = download_last_n_pictures
+    
+    elif (jpeg_only and not raw_only) or (not jpeg_only and raw_only):
+        totalPhoto = totalPhoto / 2
+
     while True:
         if not photoLists:
             print("\nAll photos are downloaded.")
@@ -138,11 +147,19 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False):
                 should_download = not(jpeg_only or raw_only) or (jpeg_only and photouri.upper().endswith(".JPG")) or (raw_only and photouri.upper().endswith(".DNG"))
                 if not should_download:
                     continue
-                print("(%d/%d) Downloading %s now ... " % (count, totalPhoto, photouri),)
+                print("(%d/%d) Downloading %s now ... " % ((count / 2 if (jpeg_only or raw_only) else count), totalPhoto, photouri),)
                 if fetchPhoto(photouri) == True:
                     print("done!!")
                 else:
                     print("*** FAILED ***")
+
+            if download_last_n_pictures:
+                if download_last_n_pictures > 0:
+                    download_last_n_pictures = download_last_n_pictures - 1
+                    #print("Photo left to download: %s" % str(download_last_n_pictures))
+                else:
+                    #print("Downloaded photo(s): %s" % str(count))
+                    break
     
 if __name__ == "__main__":
     # set connection timeout to 2 seconds
@@ -174,8 +191,20 @@ Advanced usage - Download photos after specific directory and file:
     parser.add_argument("-f", "--file", help="Start to download photos from specific file \n(eg. -f R0000005.JPG). MUST use with -d")
     parser.add_argument("-j", "--jpg", action="store_true", help="Download jpg files only")
     parser.add_argument("-r", "--raw", action="store_true", help="Download raw files only")
+    parser.add_argument("-l", "--last",dest="last", default=0, type=int, help="Download last N pictures from the end")
+
+
+    
+    download_last_n_pictures = None
+    if parser.parse_args().last:
+        try:
+            download_last_n_pictures = int(parser.parse_args().last)
+            print("Only downloading last %s picture(s)" % str(download_last_n_pictures))
+        except:
+            pass
 
     model = getDeviceModel()
+
     if model not in SUPPORT_DEVICE:
         print("Your source device '%s' is unknown or not supported!" % model)
         sys.exit(1)
@@ -185,32 +214,33 @@ Advanced usage - Download photos after specific directory and file:
     if getBatteryLevel() < 15:
         print("Your battery level is less than 15%, please charge it before sync operation!")
         sys.exit(1)
+    
+    isAll = (parser.parse_args().all == True)
+    jpeg_only = (parser.parse_args().jpg == True)
+    raw_only = (parser.parse_args().raw == True)
 
-    if parser.parse_args().all == True and parser.parse_args().dir is None and parser.parse_args().file is None:
-        if parser.parse_args().jpg == True:
-            downloadPhotos(isAll=True, jpeg_only=True)
-        elif parser.parse_args().raw == True:
-            downloadPhotos(isAll=True, raw_only=True)
-        else:
-            downloadPhotos(isAll=True)
-    elif not (parser.parse_args().dir is None) and not (parser.parse_args().file is None) and parser.parse_args().all == False:
+    if not ((parser.parse_args().dir is None)):
         match = re.match(r"^[1-9]\d\dRICOH$", parser.parse_args().dir)
         if match:
             STARTDIR = parser.parse_args().dir
         else:
             print("Incorrect directory name. It should be something like 100RICOH")
             sys.exit(1)
+    else:
+        STARTDIR = "100RICOH"
+
+    if not (parser.parse_args().file is None):
         match = re.match(r"^R0\d{6}\.JPG$", parser.parse_args().file)
+        if not match:
+            match = re.match(r"^R0\d{6}\.RAW$", parser.parse_args().file)
         if match:
             STARTFILE = parser.parse_args().file
-        else:
+        else :
             print("Incorrect file name. It should be something like R0999999.JPG. (all in CAPITAL)")
             sys.exit(1)
-        if parser.parse_args().jpg == True:
-            downloadPhotos(isAll=False, jpeg_only=True)
-        elif parser.parse_args().raw == True:
-            downloadPhotos(isAll=False, raw_only=True)
-        else:
-            downloadPhotos(isAll=False)
-    else:
+
+    if not (isAll or jpeg_only or raw_only):
         parser.print_help()
+        sys.exit(1)
+
+    downloadPhotos(isAll=isAll, jpeg_only=jpeg_only, raw_only=raw_only, download_last_n_pictures=download_last_n_pictures)
