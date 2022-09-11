@@ -1,7 +1,11 @@
 #!/usr/bin/env python -u
 # -*- coding: utf-8 -*-
 
-import urllib.request as urllib2
+try:
+  import urllib.request as urllib2
+except:
+  import urllib2
+
 import sys
 import json
 import argparse
