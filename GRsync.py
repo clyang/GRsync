@@ -1,7 +1,11 @@
-#!/usr/bin/python -u
+#!/usr/bin/env python -u
 # -*- coding: utf-8 -*-
 
-import urllib2
+try:
+  import urllib.request as urllib2
+except:
+  import urllib2
+
 import sys
 import json
 import argparse
@@ -20,8 +24,8 @@ PHOTO_LIST_URI = "v1/photos"
 GR_PROPS = "v1/props"
 STARTDIR = ""
 STARTFILE = ""
-SUPPORT_DEVICE = ['RICOH GR II', 'RICOH GR III']
-DEVICE = "RICOH GR II"
+SUPPORT_DEVICE = ['RICOH GR II', 'RICOH GR III', 'RICOH GR IIIx']
+DEVICE = "RICOH GR IIIx"
 
 def getDeviceModel():
     req = urllib2.Request(GR_HOST + GR_PROPS)
@@ -30,12 +34,12 @@ def getDeviceModel():
         data = resp.read()
         props = json.loads(data)
         if props['errCode'] != 200:
-            print "Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg'])
+            print("Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg']))
             sys.exit(1)
         else:
             return props['model']
-    except urllib2.URLError, e:
-        print "Unable to fetch device props from device"
+    except Exception as e:
+        print("Unable to fetch device props from device")
         sys.exit(1)
 
 def getBatteryLevel():
@@ -45,12 +49,12 @@ def getBatteryLevel():
         data = resp.read()
         props = json.loads(data)
         if props['errCode'] != 200:
-            print "Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg'])
+            print("Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg']))
             sys.exit(1)
         else:
             return props['battery']
-    except urllib2.URLError, e:
-        print "Unable to fetch device props from %s" % DEVICE
+    except Exception as e:
+        print("Unable to fetch device props from %s" % DEVICE)
         sys.exit(1)
 
 def getPhotoList():
@@ -60,7 +64,7 @@ def getPhotoList():
         data = resp.read()
         photoDict = json.loads(data)
         if photoDict['errCode'] != 200:
-            print "Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg'])
+            print("Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg']))
             sys.exit(1)
         else:
             photoList = []
@@ -74,8 +78,8 @@ def getPhotoList():
                 for file in dic['files']:
                     photoList.append("%s/%s" % (dic['name'], file ))
             return photoList
-    except urllib2.URLError, e:
-        print "Unable to fetch photo list from %s" % DEVICE
+    except Exception as e:
+        print("Unable to fetch photo list from %s" % DEVICE)
         sys.exit(1)
     
 def getLocalFiles():
@@ -88,32 +92,32 @@ def getLocalFiles():
 
 def fetchPhoto(photouri):
     try:
-        if DEVICE is 'GR2':
+        if 'GR2' in DEVICE.upper():
             f = urllib2.urlopen(GR_HOST+photouri)
         else: 
             f = urllib2.urlopen(GR_HOST+PHOTO_LIST_URI+'/'+photouri)
         with open(PHOTO_DEST_DIR+photouri, "wb") as localfile:
             localfile.write(f.read())
         return True
-    except urllib2.URLError, e:
+    except Exception as e:
         return False
 
 def shutdownGR():
     req = urllib2.Request("http://192.168.0.1/v1/device/finish")
     req.add_header('Content-Type', 'application/json')
-    response = urllib2.urlopen(req, "{}")
+    response = urllib2.urlopen(req, b"{}")
 
-def downloadPhotos(isAll):
-    print "Fetching photo list from %s ..." % DEVICE
+def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None):
+    print("Fetching photo list from %s ..." % DEVICE)
     photoLists = getPhotoList()
     localFiles = getLocalFiles()
     count = 0
-    if isAll == True:
+    if (isAll == True) or download_last_n_pictures or jpeg_only or raw_only:
         totalPhoto = len(photoLists)
     else:
         starturi = "%s/%s" % (STARTDIR, STARTFILE)
         if starturi not in photoLists:
-            print "Unable to find %s in Ricoh %s" % (starturi, DEVICE)
+            print("Unable to find %s in Ricoh %s" % (starturi, DEVICE))
             sys.exit(1)
         else:
             while True:
@@ -123,23 +127,43 @@ def downloadPhotos(isAll):
                     totalPhoto = len(photoLists)
                     break
                     
-    print "Start to download photos ..."    
+    print("Start to download photos ..."    )
+    if download_last_n_pictures:
+        if (jpeg_only and raw_only) or (isAll) or (not jpeg_only and not raw_only):
+                totalPhoto = download_last_n_pictures * 2
+        else:
+            totalPhoto = download_last_n_pictures
+    
+    elif (jpeg_only and not raw_only) or (not jpeg_only and raw_only):
+        totalPhoto = totalPhoto / 2
+
     while True:
         if not photoLists:
-            print "\nAll photos are downloaded."
+            print("\nAll photos are downloaded.")
             shutdownGR()
             break
         else:
             photouri = photoLists.pop(0)
             count += 1
             if photouri in localFiles:
-                print "(%d/%d) Skip %s, already have it on local drive!!" % (count, totalPhoto, photouri)
+                print("(%d/%d) Skip %s, already have it on local drive!!" % (count, totalPhoto, photouri))
             else:
-                print "(%d/%d) Downloading %s now ... " % (count, totalPhoto, photouri),
+                should_download = not(jpeg_only or raw_only) or (jpeg_only and photouri.upper().endswith(".JPG")) or (raw_only and photouri.upper().endswith(".DNG"))
+                if not should_download:
+                    continue
+                print("(%d/%d) Downloading %s now ... " % ((count / 2 if (jpeg_only or raw_only) else count), totalPhoto, photouri),)
                 if fetchPhoto(photouri) == True:
-                    print "done!!"
+                    print("done!!")
                 else:
-                    print "*** FAILED ***"
+                    print("*** FAILED ***")
+
+            if download_last_n_pictures:
+                if download_last_n_pictures > 0:
+                    download_last_n_pictures = download_last_n_pictures - 1
+                    #print("Photo left to download: %s" % str(download_last_n_pictures))
+                else:
+                    #print("Downloaded photo(s): %s" % str(count))
+                    break
     
 if __name__ == "__main__":
     # set connection timeout to 2 seconds
@@ -169,33 +193,58 @@ Advanced usage - Download photos after specific directory and file:
     parser.add_argument("-a", "--all", action="store_true", help="Download all photos")
     parser.add_argument("-d", "--dir", help="Assign directory (eg. -d 100RICOH). MUST use with -f")
     parser.add_argument("-f", "--file", help="Start to download photos from specific file \n(eg. -f R0000005.JPG). MUST use with -d")
+    parser.add_argument("-j", "--jpg", action="store_true", help="Download jpg files only")
+    parser.add_argument("-r", "--raw", action="store_true", help="Download raw files only")
+    parser.add_argument("-l", "--last",dest="last", default=0, type=int, help="Download last N pictures from the end")
+
+
+    
+    download_last_n_pictures = None
+    if parser.parse_args().last:
+        try:
+            download_last_n_pictures = int(parser.parse_args().last)
+            print("Only downloading last %s picture(s)" % str(download_last_n_pictures))
+        except:
+            pass
 
     model = getDeviceModel()
+
     if model not in SUPPORT_DEVICE:
-        print "Your source device '%s' is unknown or not supported!" % model
+        print("Your source device '%s' is unknown or not supported!" % model)
         sys.exit(1)
     else:
         DEVICE = model
 
     if getBatteryLevel() < 15:
-        print "Your battery level is less than 15%, please charge it before sync operation!"
+        print("Your battery level is less than 15%, please charge it before sync operation!")
         sys.exit(1)
+    
+    isAll = (parser.parse_args().all == True)
+    jpeg_only = (parser.parse_args().jpg == True)
+    raw_only = (parser.parse_args().raw == True)
 
-    if parser.parse_args().all == True and parser.parse_args().dir is None and parser.parse_args().file is None:
-        downloadPhotos(isAll=True)
-    elif not (parser.parse_args().dir is None) and not (parser.parse_args().file is None) and parser.parse_args().all == False:
+    if not ((parser.parse_args().dir is None)):
         match = re.match(r"^[1-9]\d\dRICOH$", parser.parse_args().dir)
         if match:
             STARTDIR = parser.parse_args().dir
         else:
-            print "Incorrect directory name. It should be something like 100RICOH"
+            print("Incorrect directory name. It should be something like 100RICOH")
             sys.exit(1)
+    else:
+        STARTDIR = "100RICOH"
+
+    if not (parser.parse_args().file is None):
         match = re.match(r"^R0\d{6}\.JPG$", parser.parse_args().file)
+        if not match:
+            match = re.match(r"^R0\d{6}\.RAW$", parser.parse_args().file)
         if match:
             STARTFILE = parser.parse_args().file
-        else:
-            print "Incorrect file name. It should be something like R0999999.JPG. (all in CAPITAL)"
+        else :
+            print("Incorrect file name. It should be something like R0999999.JPG. (all in CAPITAL)")
             sys.exit(1)
-        downloadPhotos(isAll=False)
-    else:
+
+    if not (isAll or jpeg_only or raw_only):
         parser.print_help()
+        sys.exit(1)
+
+    downloadPhotos(isAll=isAll, jpeg_only=jpeg_only, raw_only=raw_only, download_last_n_pictures=download_last_n_pictures)
