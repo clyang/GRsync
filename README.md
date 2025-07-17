@@ -5,6 +5,18 @@ It automatically checks if photos already exists in your local drive. Duplicated
 
 **NOTE: Ricoh GR II only supports 20MHz 802.11n. The max transfer speeed I can get is 65Mbps**
 
+## Changes from the original repo
+
+Added options
+```
+-j or --jpg to only download jpg files
+-r or --raw to only download raw files
+```
+
+Added support for GR III X
+
+Fixed script to work with Python3
+
 ## Installaion
 1. Get the source from Github
  
@@ -35,5 +47,16 @@ PHOTO_DEST_DIR = "/path/to/downloaded/photos/"
 ./GRsync -d 100RICOH -f R0000005.JPG
 ```
 
+4. Advanced usage - Download only last 3 photos in jpeg format
+
+```bash
+./GRsync -l 3 -j
+```
+
+or
+
+```bash
+./GRsync --last 3 --jpg
+```
 ## Contribution
 Special thanks to [@imkojima](https://github.com/imkojima) for fixing GR III compatibility issue.
