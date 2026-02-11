@@ -107,7 +107,7 @@ def shutdownGR():
     req.add_header('Content-Type', 'application/json')
     response = urllib2.urlopen(req, b"{}")
 
-def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None):
+def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None, reverse_last=False):
     print("Fetching photo list from %s ..." % DEVICE)
     photoLists = getPhotoList()
     localFiles = getLocalFiles()
@@ -127,6 +127,9 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictu
                     totalPhoto = len(photoLists)
                     break
                     
+    if download_last_n_pictures and reverse_last:
+        photoLists.reverse()
+
     print("Start to download photos ..."    )
     if download_last_n_pictures:
         if (jpeg_only and raw_only) or (isAll) or (not jpeg_only and not raw_only):
@@ -196,16 +199,19 @@ Advanced usage - Download photos after specific directory and file:
     parser.add_argument("-j", "--jpg", action="store_true", help="Download jpg files only")
     parser.add_argument("-r", "--raw", action="store_true", help="Download raw files only")
     parser.add_argument("-l", "--last",dest="last", default=0, type=int, help="Download last N pictures from the end")
+    parser.add_argument("-R", "--reverse-last", action="store_true", help="Reverse the order of --last to download newest pictures first")
 
+    args = parser.parse_args()
 
-    
     download_last_n_pictures = None
-    if parser.parse_args().last:
+    if args.last:
         try:
-            download_last_n_pictures = int(parser.parse_args().last)
+            download_last_n_pictures = int(args.last)
             print("Only downloading last %s picture(s)" % str(download_last_n_pictures))
         except:
             pass
+
+    reverse_last = args.reverse_last
 
     model = getDeviceModel()
 
@@ -218,27 +224,27 @@ Advanced usage - Download photos after specific directory and file:
     if getBatteryLevel() < 15:
         print("Your battery level is less than 15%, please charge it before sync operation!")
         sys.exit(1)
-    
-    isAll = (parser.parse_args().all == True)
-    jpeg_only = (parser.parse_args().jpg == True)
-    raw_only = (parser.parse_args().raw == True)
 
-    if not ((parser.parse_args().dir is None)):
-        match = re.match(r"^[1-9]\d\dRICOH$", parser.parse_args().dir)
+    isAll = (args.all == True)
+    jpeg_only = (args.jpg == True)
+    raw_only = (args.raw == True)
+
+    if not ((args.dir is None)):
+        match = re.match(r"^[1-9]\d\dRICOH$", args.dir)
         if match:
-            STARTDIR = parser.parse_args().dir
+            STARTDIR = args.dir
         else:
             print("Incorrect directory name. It should be something like 100RICOH")
             sys.exit(1)
     else:
         STARTDIR = "100RICOH"
 
-    if not (parser.parse_args().file is None):
-        match = re.match(r"^R0\d{6}\.JPG$", parser.parse_args().file)
+    if not (args.file is None):
+        match = re.match(r"^R0\d{6}\.JPG$", args.file)
         if not match:
-            match = re.match(r"^R0\d{6}\.RAW$", parser.parse_args().file)
+            match = re.match(r"^R0\d{6}\.RAW$", args.file)
         if match:
-            STARTFILE = parser.parse_args().file
+            STARTFILE = args.file
         else :
             print("Incorrect file name. It should be something like R0999999.JPG. (all in CAPITAL)")
             sys.exit(1)
@@ -247,4 +253,4 @@ Advanced usage - Download photos after specific directory and file:
         parser.print_help()
         sys.exit(1)
 
-    downloadPhotos(isAll=isAll, jpeg_only=jpeg_only, raw_only=raw_only, download_last_n_pictures=download_last_n_pictures)
+    downloadPhotos(isAll=isAll, jpeg_only=jpeg_only, raw_only=raw_only, download_last_n_pictures=download_last_n_pictures, reverse_last=reverse_last)
