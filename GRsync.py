@@ -106,9 +106,16 @@ def disconnectGR():
     # Use /v1/device/wlan/finish to disconnect WiFi gracefully.
     # The previous /v1/device/finish endpoint powers off the entire camera,
     # which is too destructive as a default post-sync action.
-    req = urllib2.Request(GR_HOST + "v1/device/wlan/finish")
-    req.add_header('Content-Type', 'application/json')
-    response = urllib2.urlopen(req, b"{}")
+    # This request may fail partway through since the endpoint tears down
+    # the WiFi connection we're communicating over. Swallow errors so the
+    # script exits cleanly after a successful sync.
+    try:
+        req = urllib2.Request(GR_HOST + "v1/device/wlan/finish")
+        req.add_header('Content-Type', 'application/json')
+        resp = urllib2.urlopen(req, b"{}")
+        resp.close()
+    except Exception:
+        pass
 
 def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None, reverse_last=False):
     print("Fetching photo list from %s ..." % DEVICE)
@@ -160,14 +167,13 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictu
                 print("(%d/%d) Downloading %s now ... " % ((count // 2 if (jpeg_only or raw_only) else count), totalPhoto, photouri),)
                 if fetchPhoto(photouri) == True:
                     print("done!!")
+                    if download_last_n_pictures is not None:
+                        download_last_n_pictures = download_last_n_pictures - 1
                 else:
                     print("*** FAILED ***")
 
-            if download_last_n_pictures is not None:
-                if photouri not in localFiles:
-                    download_last_n_pictures = download_last_n_pictures - 1
-                if download_last_n_pictures <= 0:
-                    break
+            if download_last_n_pictures is not None and download_last_n_pictures <= 0:
+                break
     
 if __name__ == "__main__":
     # set connection timeout to 30 seconds
