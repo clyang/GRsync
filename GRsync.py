@@ -34,7 +34,7 @@ def getDeviceModel():
         data = resp.read()
         props = json.loads(data)
         if props['errCode'] != 200:
-            print("Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg']))
+            print("Error code: %d, Error message: %s" % (props['errCode'], props['errMsg']))
             sys.exit(1)
         else:
             return props['model']
@@ -49,7 +49,7 @@ def getBatteryLevel():
         data = resp.read()
         props = json.loads(data)
         if props['errCode'] != 200:
-            print("Error code: %d, Error message: %s" % (photoDict['errCode'], photoDict['errMsg']))
+            print("Error code: %d, Error message: %s" % (props['errCode'], props['errMsg']))
             sys.exit(1)
         else:
             return props['battery']
@@ -102,10 +102,20 @@ def fetchPhoto(photouri):
     except Exception as e:
         return False
 
-def shutdownGR():
-    req = urllib2.Request("http://192.168.0.1/v1/device/finish")
-    req.add_header('Content-Type', 'application/json')
-    response = urllib2.urlopen(req, b"{}")
+def disconnectGR():
+    # Use /v1/device/wlan/finish to disconnect WiFi gracefully.
+    # The previous /v1/device/finish endpoint powers off the entire camera,
+    # which is too destructive as a default post-sync action.
+    # This request may fail partway through since the endpoint tears down
+    # the WiFi connection we're communicating over. Swallow errors so the
+    # script exits cleanly after a successful sync.
+    try:
+        req = urllib2.Request(GR_HOST + "v1/device/wlan/finish")
+        req.add_header('Content-Type', 'application/json')
+        resp = urllib2.urlopen(req, b"{}", timeout=3)
+        resp.close()
+    except (IOError, OSError):
+        pass
 
 def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None, reverse_last=False):
     print("Fetching photo list from %s ..." % DEVICE)
@@ -138,12 +148,12 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictu
             totalPhoto = download_last_n_pictures
     
     elif (jpeg_only and not raw_only) or (not jpeg_only and raw_only):
-        totalPhoto = totalPhoto / 2
+        totalPhoto = totalPhoto // 2
 
     while True:
         if not photoLists:
             print("\nAll photos are downloaded.")
-            shutdownGR()
+            disconnectGR()
             break
         else:
             photouri = photoLists.pop(0)
@@ -154,23 +164,22 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictu
                 should_download = not(jpeg_only or raw_only) or (jpeg_only and photouri.upper().endswith(".JPG")) or (raw_only and photouri.upper().endswith(".DNG"))
                 if not should_download:
                     continue
-                print("(%d/%d) Downloading %s now ... " % ((count / 2 if (jpeg_only or raw_only) else count), totalPhoto, photouri),)
+                print("(%d/%d) Downloading %s now ... " % ((count // 2 if (jpeg_only or raw_only) else count), totalPhoto, photouri),)
                 if fetchPhoto(photouri) == True:
                     print("done!!")
                 else:
                     print("*** FAILED ***")
 
-            if download_last_n_pictures:
-                if download_last_n_pictures > 0:
-                    download_last_n_pictures = download_last_n_pictures - 1
-                    #print("Photo left to download: %s" % str(download_last_n_pictures))
-                else:
-                    #print("Downloaded photo(s): %s" % str(count))
+            if download_last_n_pictures is not None:
+                download_last_n_pictures = download_last_n_pictures - 1
+                if download_last_n_pictures <= 0:
                     break
     
 if __name__ == "__main__":
-    # set connection timeout to 2 seconds
-    socket.setdefaulttimeout(2)
+    # set connection timeout to 30 seconds
+    # The camera's WiFi is 2.4 GHz only (~3-6 MB/s). Full JPEGs are 15-30 MB
+    # and DNG raws are 30-40 MB, so transfers can take 10+ seconds per file.
+    socket.setdefaulttimeout(30)
     
     # setting up argument parser
     parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter, description='''
@@ -242,7 +251,7 @@ Advanced usage - Download photos after specific directory and file:
     if not (args.file is None):
         match = re.match(r"^R0\d{6}\.JPG$", args.file)
         if not match:
-            match = re.match(r"^R0\d{6}\.RAW$", args.file)
+            match = re.match(r"^R0\d{6}\.DNG$", args.file)
         if match:
             STARTFILE = args.file
         else :
