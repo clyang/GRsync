@@ -112,9 +112,9 @@ def disconnectGR():
     try:
         req = urllib2.Request(GR_HOST + "v1/device/wlan/finish")
         req.add_header('Content-Type', 'application/json')
-        resp = urllib2.urlopen(req, b"{}")
+        resp = urllib2.urlopen(req, b"{}", timeout=3)
         resp.close()
-    except Exception:
+    except (IOError, OSError):
         pass
 
 def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictures=None, reverse_last=False):
@@ -167,13 +167,13 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictu
                 print("(%d/%d) Downloading %s now ... " % ((count // 2 if (jpeg_only or raw_only) else count), totalPhoto, photouri),)
                 if fetchPhoto(photouri) == True:
                     print("done!!")
-                    if download_last_n_pictures is not None:
-                        download_last_n_pictures = download_last_n_pictures - 1
                 else:
                     print("*** FAILED ***")
 
-            if download_last_n_pictures is not None and download_last_n_pictures <= 0:
-                break
+            if download_last_n_pictures is not None:
+                download_last_n_pictures = download_last_n_pictures - 1
+                if download_last_n_pictures <= 0:
+                    break
     
 if __name__ == "__main__":
     # set connection timeout to 30 seconds
