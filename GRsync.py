@@ -106,7 +106,7 @@ def disconnectGR():
     # Use /v1/device/wlan/finish to disconnect WiFi gracefully.
     # The previous /v1/device/finish endpoint powers off the entire camera,
     # which is too destructive as a default post-sync action.
-    req = urllib2.Request("http://192.168.0.1/v1/device/wlan/finish")
+    req = urllib2.Request(GR_HOST + "v1/device/wlan/finish")
     req.add_header('Content-Type', 'application/json')
     response = urllib2.urlopen(req, b"{}")
 
