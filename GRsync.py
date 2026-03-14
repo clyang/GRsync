@@ -148,7 +148,7 @@ def downloadPhotos(isAll, jpeg_only=False, raw_only=False, download_last_n_pictu
             totalPhoto = download_last_n_pictures
     
     elif (jpeg_only and not raw_only) or (not jpeg_only and raw_only):
-        totalPhoto = totalPhoto / 2
+        totalPhoto = totalPhoto // 2
 
     while True:
         if not photoLists:
